@@ -4,6 +4,12 @@ import numpy as np
 import pydicom as pydcm
 
 class DICOMImage():
+    ''' dicom image class
+
+        Args:
+            dcm_folder: str, path to the folder of the dicom slices
+    '''
+
     def __init__(self, dcm_folder):
         slice_paths = [str(ff) for ff in Path(dcm_folder).iterdir() if ff.suffix == '.dcm']
 
@@ -11,7 +17,8 @@ class DICOMImage():
         self.slice_paths = np.array(slice_paths)[sorted_idx]
 
     def sort_instance_uids(self, slice_paths):
-        '''returns the slice instance uid sorted by height'''
+        '''returns the slice instance uids sorted by height'''
+
         heights = np.empty(len(slice_paths))
         uids = np.empty(len(slice_paths), dtype='U100')
 
@@ -24,16 +31,19 @@ class DICOMImage():
 
     def get_size(self):
         '''get the size of the image'''
+
         ds = pydcm.read_file(self.slice_paths[0])
         return (ds.Rows, ds.Columns, len(self.slice_paths))
 
     def get_origin(self):
         '''get patient position of first (lowest) slice'''
+
         ds = pydcm.read_file(self.slice_paths[0])
         return ds.ImagePositionPatient
 
     def get_slice_positions(self):
         ''' get the patient position of all slice_paths '''
+
         positions = np.empty((3, len(self.slice_paths)))
         for idx, slize in enumerate(self.slice_paths):
             ds = pydcm.read_file(slize)
@@ -44,6 +54,7 @@ class DICOMImage():
         ''' takes an instance uid as argument and returns the corresponding
             patient position of the slice
         '''
+
         for slize in self.slice_paths:
             ds = pydcm.read_file(slize)
             if ds.SOPInstanceUID == uid:
@@ -51,7 +62,14 @@ class DICOMImage():
         return False
 
     def get_spacing(self, precision=[0.05, 0.05, 0.05]):
-        '''get the image level spacing'''
+        '''get the image level spacing
+
+        Args:
+            precision: list with a len of image dimensions
+                specifies how much the spacing between slices can vary
+                befor throwing an error
+        '''
+
         pix_spacing = np.empty((2, len(self.slice_paths)))
         heights = np.empty(len(self.slice_paths))
         for idx, slize in enumerate(self.slice_paths):
@@ -73,6 +91,7 @@ class DICOMImage():
 
     def get_pixel_array(self):
         '''read all the images and returns them sorted by their height'''
+
         img = np.empty(self.get_size())
 
         for idx, slz in enumerate(self.slice_paths):
@@ -81,6 +100,16 @@ class DICOMImage():
         return img
 
 class DICOMStruct():
+    ''' dicom struct class, lets you read RTSTRUCT files and convert them
+        to pixel data
+
+        Args:
+            file_path: str, path to the RTSTRUCT dicom file
+            origin: list, patient origin of the lowest slice
+            spacing: list, pixel spacing of the corresponding image file
+            shape: list, shape of the corresponding image file
+    '''
+
     def __init__(self, file_path, origin, spacing, shape):
         self.ds = pydcm.read_file(str(file_path))
         self.origin = origin
@@ -89,6 +118,7 @@ class DICOMStruct():
 
     def get_ROI_names(self):
         '''returns names off all ROI'''
+
         names = []
         for item in self.ds.StructureSetROISequence:
             names.append(item.ROIName)
@@ -96,14 +126,17 @@ class DICOMStruct():
 
     def get_ROI_index(self, ROI_name):
         '''returns the index for a ROI name'''
+
         for ii, nn in enumerate(self.get_ROI_names()):
             if nn == ROI_name:
                 return ii
         return False
 
     def coordinates_to_pixel(self, coordiantes):
-        ''' takes a scanner coordiante (x, y, z) and a refenerce CT and returns
-            the ijk pixel data coordiate '''
+        ''' takes a scanner coordiante (x, y, z) and returns
+            the ijk pixel data coordiate 
+        '''
+
         x_idx = abs(self.origin[0] - coordiantes[0]) / self.spacing[0]
         y_idx = abs(self.origin[1] - coordiantes[1]) / self.spacing[1]
         z_idx = abs(self.origin[2] - coordiantes[2]) / self.spacing[2]
@@ -111,8 +144,17 @@ class DICOMStruct():
         return np.array([x_idx, y_idx, z_idx]).astype(int)
 
     def get_contour_data(self, ROI, mode='pixel'):
-        '''get the complete contour data for a given region of interesst'''
-        assert (mode == 'pixel') or (mode == 'coordinates'), 'mode not found'
+        '''get the complete contour data for a given region of interesst
+
+        Args:    
+            ROI: int or str, specifies the index or name of the corresponding
+                region of interesst
+            mode: "pixel" or "coordinates",
+                for pixel indices are returned
+                for coordiante distances in mm are returned
+        '''
+
+        assert mode in ['pixel', 'coordinates'], 'mode not found'
 
         if isinstance(ROI, str):
             roi_idx = self.get_ROI_index(ROI)
@@ -133,7 +175,13 @@ class DICOMStruct():
         return coordinates.astype(int)
 
     def get_pixel_array(self, ROI):
-        '''returns the contour as numpy array'''
+        '''returns the contour as numpy array
+
+        Args:    
+            ROI: int or str, specifies the index or name of the corresponding
+                region of interesst
+        '''
+
         if isinstance(ROI, str):
             roi_idx = self.get_ROI_index(ROI)
         else:
@@ -154,16 +202,33 @@ class DICOMStruct():
                 )
         return data
 
-    def get_bbox(self, ROI):
-        '''returns a global bounding box for the contour'''
-        if isinstance(ROI, str):
+    def get_bbox(self, ROI, order='numpy'):
+        '''returns a global bounding box for the contour
+
+        Args:    
+            ROI: int or str, specifies the index or name of the corresponding
+                region of interesst
+            order: one of "numpy", "cv2", "row_first" or "col_first" specifies
+                the order of the axis. (numpy == row_first, cv2 == col_first)        
+        '''
+    
+        order = order.lower()
+        assert order in ['numpy', 'cv2', 'row_first', 'col_first'], 'order not found'
+        
+        if type(ROI) == str:
             roi_idx = self.get_ROI_index(ROI)
         else:
             roi_idx = ROI
-
+            
         contour = self.get_contour_data(roi_idx).reshape(-1, 3)
         bbox = np.zeros(6)
         bbox[::2] = np.min(contour, axis=0)
         bbox[1::2] = np.max(contour, axis=0)
 
-        return bbox.astype(int)
+        bbox = bbox.astype(int)
+        
+        if (order == 'cv2') or (order == 'col_first'):
+            return bbox 
+        
+        bbox[:4] = bbox[2], bbox[3], bbox[0], bbox[1]
+        return bbox
