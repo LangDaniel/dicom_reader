@@ -29,7 +29,7 @@ class DICOMImage():
         sorted_idx = heights.argsort()
         return uids[sorted_idx[::-1]], sorted_idx
 
-    def get_size(self):
+    def get_shape(self):
         '''get the size of the image'''
 
         ds = pydcm.read_file(self.slice_paths[0])
@@ -75,7 +75,8 @@ class DICOMImage():
         for idx, slize in enumerate(self.slice_paths):
             ds = pydcm.read_file(slize)
             pix_spacing[:, idx] = ds.PixelSpacing
-            heights[idx] = float(ds.SliceLocation)
+            heights[idx] = float(ds.ImagePositionPatient[-1])
+            #heights[idx] = float(ds.SliceLocation)
 
         slice_spacing = np.diff(heights)
 
@@ -91,12 +92,18 @@ class DICOMImage():
 
     def get_pixel_array(self):
         '''read all the images and returns them sorted by their height'''
+        CT_class_uid = '1.2.840.10008.5.1.4.1.1.2'
 
-        img = np.empty(self.get_size())
+        img = np.empty(self.get_shape())
 
         for idx, slz in enumerate(self.slice_paths):
             ds = pydcm.read_file(slz)
-            img[:, :, idx] = ds.pixel_array
+            if ds.SOPClassUID == CT_class_uid:
+                data = ds.pixel_array
+                data = (float(ds.RescaleSlope) * data) + float(ds.RescaleIntercept)
+            else:
+                raise ValueError('no CT image: currently not able to read yet')
+            img[:, :, idx] = data
         return img
 
 class DICOMStruct():
@@ -110,11 +117,28 @@ class DICOMStruct():
             shape: list, shape of the corresponding image file
     '''
 
-    def __init__(self, file_path, origin, spacing, shape):
+    def __init__(self, file_path, origin, spacing, shape, ROI):
         self.ds = pydcm.read_file(str(file_path))
         self.origin = origin
         self.spacing = spacing
         self.shape = shape
+
+        if isinstance(ROI, str):
+            self.ROI_idx = self.get_ROI_index(ROI)
+        else:
+            self.ROI_idx = ROI
+
+    def get_shape(self):
+        return self.shape
+
+    def get_spacing(self):
+        return self.spacing
+
+    def get_origin(self):
+        return self.origin
+
+    def set_ROI_idx(self, ROI_name):
+        self.ROI_idx = self.get_ROI_index(ROI_name)
 
     def get_ROI_names(self):
         '''returns names off all ROI'''
@@ -130,6 +154,8 @@ class DICOMStruct():
         for ii, nn in enumerate(self.get_ROI_names()):
             if nn == ROI_name:
                 return ii
+        print('ROI name not found use one of')
+        print(self.get_ROI_names())
         return False
 
     def coordinates_to_pixel(self, coordiantes):
@@ -143,12 +169,10 @@ class DICOMStruct():
 
         return np.array([x_idx, y_idx, z_idx]).astype(int)
 
-    def get_contour_data(self, ROI, mode='pixel'):
+    def get_contour_data(self, mode='pixel'):
         '''get the complete contour data for a given region of interesst
 
         Args:    
-            ROI: int or str, specifies the index or name of the corresponding
-                region of interesst
             mode: "pixel" or "coordinates",
                 for pixel indices are returned
                 for coordiante distances in mm are returned
@@ -156,12 +180,10 @@ class DICOMStruct():
 
         assert mode in ['pixel', 'coordinates'], 'mode not found'
 
-        if isinstance(ROI, str):
-            roi_idx = self.get_ROI_index(ROI)
-        else:
-            roi_idx = ROI
+        if isinstance(self.ROI_idx, bool):
+            raise ValueError('not ROI is set: use set_ROI_idx to do so')
 
-        roi_seq = self.ds.ROIContourSequence[roi_idx]
+        roi_seq = self.ds.ROIContourSequence[self.ROI_idx]
         coordinates = []
         for contour in roi_seq.ContourSequence:
             coordinates = coordinates + list(contour.ContourData)
@@ -174,21 +196,17 @@ class DICOMStruct():
             coordinates[ii: ii+3] = self.coordinates_to_pixel(coordinates[ii: ii+3])
         return coordinates.astype(int)
 
-    def get_pixel_array(self, ROI):
+    def get_pixel_array(self):
         '''returns the contour as numpy array
 
         Args:    
-            ROI: int or str, specifies the index or name of the corresponding
-                region of interesst
+            None
         '''
-
-        if isinstance(ROI, str):
-            roi_idx = self.get_ROI_index(ROI)
-        else:
-            roi_idx = ROI
+        if isinstance(self.ROI_idx, bool):
+            raise ValueError('not ROI is set: use set_ROI_idx to do so')
 
         data = np.zeros(self.shape)
-        contour = self.get_contour_data(roi_idx, mode='pixel')
+        contour = self.get_contour_data(mode='pixel')
         contour = contour.reshape(-1, 3)
         for z_idx in range(0, self.shape[-1]):
             slice_con = np.array(contour[contour[:, -1] == z_idx][:, :2])
@@ -202,25 +220,20 @@ class DICOMStruct():
                 )
         return data
 
-    def get_bbox(self, ROI, order='numpy'):
+    def get_bbox(self, order='numpy'):
         '''returns a global bounding box for the contour
 
         Args:    
-            ROI: int or str, specifies the index or name of the corresponding
-                region of interesst
             order: one of "numpy", "cv2", "row_first" or "col_first" specifies
                 the order of the axis. (numpy == row_first, cv2 == col_first)        
         '''
-    
+        if isinstance(self.ROI_idx, bool):
+            raise ValueError('not ROI is set: use set_ROI_idx to do so')
+
         order = order.lower()
         assert order in ['numpy', 'cv2', 'row_first', 'col_first'], 'order not found'
-        
-        if type(ROI) == str:
-            roi_idx = self.get_ROI_index(ROI)
-        else:
-            roi_idx = ROI
             
-        contour = self.get_contour_data(roi_idx).reshape(-1, 3)
+        contour = self.get_contour_data().reshape(-1, 3)
         bbox = np.zeros(6)
         bbox[::2] = np.min(contour, axis=0)
         bbox[1::2] = np.max(contour, axis=0)
@@ -232,3 +245,19 @@ class DICOMStruct():
         
         bbox[:4] = bbox[2], bbox[3], bbox[0], bbox[1]
         return bbox
+
+    def get_ROI_mean(self, order='numpy'):
+        if isinstance(self.ROI_idx, bool):
+            raise ValueError('not ROI is set: use set_ROI_idx to do so')
+    
+        order = order.lower()
+        assert order in ['numpy', 'cv2', 'row_first', 'col_first'], 'order not found'
+        
+        contour = self.get_contour_data().reshape(-1, 3)
+        center = np.mean(contour, axis=0).astype(int)
+
+        if (order == 'cv2') or (order == 'col_first'):
+            return center
+
+        center[0], center[1] = center[1], center[0]
+        return center
