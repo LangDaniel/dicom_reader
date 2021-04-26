@@ -106,27 +106,19 @@ class DICOMImage():
             img[:, :, idx] = data
         return img
 
-class DICOMStruct():
-    ''' dicom struct class, lets you read RTSTRUCT files and convert them
-        to pixel data
+class DICOMContour():
+    ''' abstract dicom contour class, parent to DICOMStruct and DICOMSeg
 
         Args:
-            file_path: str, path to the RTSTRUCT dicom file
+            file_path: str, path to the dicom file
             origin: list, patient origin of the lowest slice
             spacing: list, pixel spacing of the corresponding image file
-            shape: list, shape of the corresponding image file
     '''
 
-    def __init__(self, file_path, origin, spacing, shape, ROI):
+    def __init__(self, file_path, origin, spacing):
         self.ds = pydcm.read_file(str(file_path))
         self.origin = origin
         self.spacing = spacing
-        self.shape = shape
-
-        if isinstance(ROI, str):
-            self.ROI_idx = self.get_ROI_index(ROI)
-        else:
-            self.ROI_idx = ROI
 
     def get_shape(self):
         return self.shape
@@ -136,6 +128,118 @@ class DICOMStruct():
 
     def get_origin(self):
         return self.origin
+
+    @property
+    def get_pixel_array(self):
+        raise NotImplementedError("Subclasses should implement this!")
+
+    @property
+    def get_contour(self):
+        raise NotImplementedError("Subclasses should implement this!")
+
+    def get_bbox(self, order='numpy'):
+        '''returns a global bounding box for the contour
+
+        Args:    
+            order: one of "numpy", "cv2", "row_first" or "col_first" specifies
+                the order of the axis. (numpy == row_first, cv2 == col_first)        
+        '''
+        if isinstance(self.ROI_idx, bool):
+            raise ValueError('not ROI is set: use set_ROI_idx to do so')
+
+        order = order.lower()
+        assert order in ['numpy', 'cv2', 'row_first', 'col_first'], 'order not found'
+            
+        contour = self.get_contour()
+        bbox = np.zeros(6)
+        bbox[::2] = np.min(contour, axis=0)
+        bbox[1::2] = np.max(contour, axis=0)
+
+        bbox = bbox.astype(int)
+        
+        if (order == 'cv2') or (order == 'col_first'):
+            return bbox 
+        
+        bbox[:4] = bbox[2], bbox[3], bbox[0], bbox[1]
+        return bbox
+
+    def get_center(self, order='numpy'):
+        ''' returns the center of the region of interesst
+
+        Args:    
+            order: one of "numpy", "cv2", "row_first" or "col_first" specifies
+                the order of the axis. (numpy == row_first, cv2 == col_first)        
+        '''
+
+        order = order.lower()
+        assert order in ['numpy', 'cv2', 'row_first', 'col_first'], 'order not found'
+        
+        contour = self.get_contour()
+        center = np.mean(contour, axis=0).astype(int)
+
+        if (order == 'cv2') or (order == 'col_first'):
+            return center
+
+        center[0], center[1] = center[1], center[0]
+        return center
+        
+
+class DICOMSeg(DICOMContour):
+    ''' dicom seg class, lets you read SEG files
+
+        Args:
+            file_path: str, path to the RTSTRUCT dicom file
+            origin: list, patient origin of the lowest slice
+            spacing: list, pixel spacing of the corresponding image file
+    '''
+
+    def __init__(self, file_path, origin, spacing):
+        super(DICOMSeg, self).__init__(
+            file_path=file_path,
+            origin=origin,
+            spacing=spacing
+        )
+
+        self.shape = np.array((
+            self.ds.Rows,
+            self.ds.Columns,
+            self.ds.NumberOfFrames
+        )).astype(int)
+
+    def get_pixel_array(self):
+        data = self.ds.pixel_array
+        data = np.moveaxis(data, 0, -1)
+        return data
+
+    def get_contour(self):
+        return np.where(self.get_pixel_array())
+
+
+class DICOMStruct(DICOMContour):
+    ''' dicom struct class, lets you read RTSTRUCT files and convert them
+        to pixel data
+
+        Args:
+            file_path: str, path to the RTSTRUCT dicom file
+            origin: list, patient origin of the lowest slice
+            spacing: list, pixel spacing of the corresponding image file
+            shape: list, shape of the corresponding image file
+            ROI: str or int, specification of the name/index of the ROI to be handled
+    '''
+
+    def __init__(self, file_path, origin, spacing, shape, ROI=False):
+        super(DICOMStruct, self).__init__(
+            file_path=file_path,
+            origin=origin,
+            spacing=spacing
+        )
+
+        self.shape = shape
+
+        if isinstance(ROI, str):
+            self.ROI_idx = self.get_ROI_index(ROI)
+        else:
+            self.ROI_idx = ROI
 
     def set_ROI_idx(self, ROI_name):
         self.ROI_idx = self.get_ROI_index(ROI_name)
@@ -169,8 +273,9 @@ class DICOMStruct():
 
         return np.array([x_idx, y_idx, z_idx]).astype(int)
 
-    def get_contour_data(self, mode='pixel'):
-        '''get the complete contour data for a given region of interesst
+    def get_contour(self, mode='pixel'):
+        ''' get the complete contour data for a given region of interesst
+            specified by self.ROI
 
         Args:    
             mode: "pixel" or "coordinates",
@@ -194,7 +299,7 @@ class DICOMStruct():
 
         for ii in np.arange(0, len(coordinates), 3):
             coordinates[ii: ii+3] = self.coordinates_to_pixel(coordinates[ii: ii+3])
-        return coordinates.astype(int)
+        return coordinates.astype(int).reshape(-1, 3)
 
     def get_pixel_array(self):
         '''returns the contour as numpy array
@@ -206,8 +311,7 @@ class DICOMStruct():
             raise ValueError('not ROI is set: use set_ROI_idx to do so')
 
         data = np.zeros(self.shape)
-        contour = self.get_contour_data(mode='pixel')
-        contour = contour.reshape(-1, 3)
+        contour = self.get_contour(mode='pixel')
         for z_idx in range(0, self.shape[-1]):
             slice_con = np.array(contour[contour[:, -1] == z_idx][:, :2])
             if slice_con.size:
@@ -219,45 +323,3 @@ class DICOMStruct():
                     thickness=-1
                 )
         return data
-
-    def get_bbox(self, order='numpy'):
-        '''returns a global bounding box for the contour
-
-        Args:    
-            order: one of "numpy", "cv2", "row_first" or "col_first" specifies
-                the order of the axis. (numpy == row_first, cv2 == col_first)        
-        '''
-        if isinstance(self.ROI_idx, bool):
-            raise ValueError('not ROI is set: use set_ROI_idx to do so')
-
-        order = order.lower()
-        assert order in ['numpy', 'cv2', 'row_first', 'col_first'], 'order not found'
-            
-        contour = self.get_contour_data().reshape(-1, 3)
-        bbox = np.zeros(6)
-        bbox[::2] = np.min(contour, axis=0)
-        bbox[1::2] = np.max(contour, axis=0)
-
-        bbox = bbox.astype(int)
-        
-        if (order == 'cv2') or (order == 'col_first'):
-            return bbox 
-        
-        bbox[:4] = bbox[2], bbox[3], bbox[0], bbox[1]
-        return bbox
-
-    def get_ROI_mean(self, order='numpy'):
-        if isinstance(self.ROI_idx, bool):
-            raise ValueError('not ROI is set: use set_ROI_idx to do so')
-    
-        order = order.lower()
-        assert order in ['numpy', 'cv2', 'row_first', 'col_first'], 'order not found'
-        
-        contour = self.get_contour_data().reshape(-1, 3)
-        center = np.mean(contour, axis=0).astype(int)
-
-        if (order == 'cv2') or (order == 'col_first'):
-            return center
-
-        center[0], center[1] = center[1], center[0]
-        return center
