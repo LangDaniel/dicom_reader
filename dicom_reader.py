@@ -212,7 +212,13 @@ class DICOMSeg(DICOMContour):
         return data
 
     def get_contour(self):
-        return np.where(self.get_pixel_array())
+        contour = np.where(self.get_pixel_array())
+        con = np.empty((len(contour[0]), 3))
+        # reshape and change form numpy to cv2 order
+        con[:, 0] = contour[1]
+        con[:, 1] = contour[0]
+        con[:, 2] = contour[2]
+        return con.astype(int)
 
 
 class DICOMStruct(DICOMContour):
