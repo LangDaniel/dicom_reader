@@ -115,10 +115,11 @@ class DICOMContour():
             spacing: list, pixel spacing of the corresponding image file
     '''
 
-    def __init__(self, file_path, origin, spacing):
+    def __init__(self, file_path, origin, spacing, shape):
         self.ds = pydcm.read_file(str(file_path))
         self.origin = origin
         self.spacing = spacing
+        self.shape = shape
 
     def get_shape(self):
         return self.shape
@@ -144,8 +145,8 @@ class DICOMContour():
             order: one of "numpy", "cv2", "row_first" or "col_first" specifies
                 the order of the axis. (numpy == row_first, cv2 == col_first)        
         '''
-        if isinstance(self.ROI_idx, bool):
-            raise ValueError('not ROI is set: use set_ROI_idx to do so')
+        #if isinstance(self.ROI_idx, bool):
+        #    raise ValueError('not ROI is set: use set_ROI_idx to do so')
 
         order = order.lower()
         assert order in ['numpy', 'cv2', 'row_first', 'col_first'], 'order not found'
@@ -193,22 +194,62 @@ class DICOMSeg(DICOMContour):
             spacing: list, pixel spacing of the corresponding image file
     '''
 
-    def __init__(self, file_path, origin, spacing):
+    def __init__(self, file_path, origin, spacing, shape):
         super(DICOMSeg, self).__init__(
             file_path=file_path,
             origin=origin,
-            spacing=spacing
+            spacing=spacing,
+            shape=shape,
         )
 
-        self.shape = np.array((
+        self.seg_origin = (self.ds
+                            .PerFrameFunctionalGroupsSequence[0]
+                                .PlanePositionSequence[0]
+                                    .ImagePositionPatient)
+
+        self.check_axial_origin()
+
+        self.seg_shape = np.array((
             self.ds.Rows,
             self.ds.Columns,
             self.ds.NumberOfFrames
         )).astype(int)
 
+        self.pad_height = False
+        self.check_shape()
+
+    def check_axial_origin(self, precision=[0.05, 0.05]):
+        for idx in range(0, 2):
+            if abs(self.seg_origin[idx] - self.origin[idx]) > precision[idx]:
+                print(f'{self.seg_origin[idx]} vs {self.origin[idx]}')
+                raise ValueError('axial origin differs significantly')
+
+    def check_shape(self):
+        for idx in range(0, 2):
+            if self.shape[idx] != self.seg_shape[idx]:
+                raise ValueError('axial shape differs')
+        if self.shape[2] > self.seg_shape[2]:
+            self.pad_height = True
+
+    def padding(self, data):
+        dist = self.seg_origin[2] - self.origin[2]
+        pix_dist = dist / self.spacing[2]
+        if (pix_dist).is_integer():
+            pix_dist = int(pix_dist)
+        else:
+            raise ValueError('non integer pixel distance')
+
+        data_ = np.zeros(self.shape)
+        data_[:, :, pix_dist:pix_dist+self.seg_shape[2]] = data
+
+        return data_
+
     def get_pixel_array(self):
         data = self.ds.pixel_array
         data = np.moveaxis(data, 0, -1)
+
+        if self.pad_height:
+            data = self.padding(data)
         return data
 
     def get_contour(self):
@@ -239,8 +280,6 @@ class DICOMStruct(DICOMContour):
             origin=origin,
             spacing=spacing
         )
-
-        self.shape = shape
 
         if isinstance(ROI, str):
             self.ROI_idx = self.get_ROI_index(ROI)
