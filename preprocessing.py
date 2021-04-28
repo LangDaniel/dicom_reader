@@ -1,11 +1,11 @@
 import numpy as np
+from scipy.ndimage.interpolation import zoom
 
 class Preprocessing():
     
     def __init__(
         self,
         scale_linear=False,
-        ROI=False,
         target_shape=False,
         spacing=False,
         order=1,
@@ -16,12 +16,6 @@ class Preprocessing():
         else:
             self.scale_linear = scale_linear
             self.rescale = True
-        
-        if isinstance(ROI, bool):
-            self.use_roi = False
-        else:
-            self.ROI = np.array(ROI)
-            self.use_roi = True
 
         if isinstance(target_shape, bool):
             self.use_target_shape = False
@@ -131,6 +125,8 @@ class Preprocessing():
                 elif (crop_region.size == 6) or (crop_region.size == 4):
                     crop_region[::2] = zoom_fac * crop_region[::2]
                     crop_region[1::2] = zoom_fac * crop_region[1::2]
+                crop_region = crop_region.astype(int)
+
     
         if crop:
             data = self.crop_data(data, crop_region)
