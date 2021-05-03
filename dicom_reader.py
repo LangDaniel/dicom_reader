@@ -93,14 +93,18 @@ class DICOMImage():
     def get_pixel_array(self):
         '''read all the images and returns them sorted by their height'''
         CT_class_uid = '1.2.840.10008.5.1.4.1.1.2'
+        MRI_class_uid = '1.2.840.10008.5.1.4.1.1.4'
 
         img = np.empty(self.get_shape())
 
         for idx, slz in enumerate(self.slice_paths):
             ds = pydcm.read_file(slz)
-            if ds.SOPClassUID == CT_class_uid:
-                data = ds.pixel_array
+            data = ds.pixel_array
+            class_uid = ds.SOPClassUID
+            if class_uid == CT_class_uid:
                 data = (float(ds.RescaleSlope) * data) + float(ds.RescaleIntercept)
+            elif class_uid == MRI_class_uid:
+                print('MRI image: no rescaling (temporarely !!!!!!!!!!!!')
             else:
                 raise ValueError('no CT image: currently not able to read yet')
             img[:, :, idx] = data
@@ -278,7 +282,8 @@ class DICOMStruct(DICOMContour):
         super(DICOMStruct, self).__init__(
             file_path=file_path,
             origin=origin,
-            spacing=spacing
+            spacing=spacing,
+            shape=shape
         )
 
         if isinstance(ROI, str):
