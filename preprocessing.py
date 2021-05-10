@@ -54,8 +54,11 @@ class Preprocessing():
         elif crop_region.size == 6:
             if self.use_target_shape:
                 for idx in range(0, len(crop_region) // 2):
-                    
-                    # check if the the target shape is bigger than the ROI
+                    # if the target_shape value equals -1 do no check
+                    if self.target_shape[idx] == -1:
+                        continue
+
+                    # else check if the the target shape is bigger than the ROI
                     ROI_dist = crop_region[2*idx + 1] - crop_region[2*idx]
                     missing = self.target_shape[idx] - ROI_dist
                     
@@ -73,6 +76,7 @@ class Preprocessing():
           
             ii = crop_region[::2]
             ff = crop_region[1::2]
+        ii = np.clip(ii, a_min=0, a_max=None)
 
         data = data[ii[0]:ff[0], ii[1]:ff[1], ii[2]:ff[2]]
         
@@ -80,7 +84,7 @@ class Preprocessing():
         if self.use_target_shape:            
             if (shape < self.target_shape).any():
                 data_ = np.zeros(self.target_shape)
-                data_[:shape[0], :shape[1], shape[2]] = data
+                data_[:shape[0], :shape[1], :shape[2]] = data
                 data = data_
 
         return data
@@ -101,6 +105,10 @@ class Preprocessing():
     
     def resample(self, data, initial_spacing):
         shape = data.shape
+
+        for ii in range(0, len(initial_spacing)):
+            if self.spacing[ii] == -1:
+                self.spacing[ii] = initial_spacing[ii]
         
         resize_factor = np.round(shape * (initial_spacing / self.spacing)) / shape
         
