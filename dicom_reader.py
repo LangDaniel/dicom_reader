@@ -35,6 +35,23 @@ class DICOMImage():
         ds = pydcm.read_file(self.slice_paths[0])
         return (ds.Rows, ds.Columns, len(self.slice_paths))
 
+    def get_orientation(self, precision=0.005):
+        '''get the orientation of the image'''
+
+        # get orientation of first slice
+        orient = pydcm.read_file(self.slice_paths[0]).ImageOrientationPatient
+
+        # check that all other slices have the same orientation
+        for ii in range(1, len(self.slice_paths)):
+            ds = pydcm.read_file(self.slice_paths[ii])
+            if ds.ImageOrientationPatient != orient:
+                raise ValueError('orientation changed')
+
+        orient = np.array(orient)
+        orient = np.array([*orient[abs(orient) > precision], 1])
+
+        return orient 
+
     def get_origin(self):
         '''get patient position of first (lowest) slice'''
 
@@ -93,6 +110,7 @@ class DICOMImage():
     def get_pixel_array(self):
         '''read all the images and returns them sorted by their height'''
         CT_class_uid = '1.2.840.10008.5.1.4.1.1.2'
+        PET_class_uid = '1.2.840.10008.5.1.4.1.1.128'
         MRI_class_uid = '1.2.840.10008.5.1.4.1.1.4'
 
         img = np.empty(self.get_shape())
@@ -101,14 +119,35 @@ class DICOMImage():
             ds = pydcm.read_file(slz)
             data = ds.pixel_array
             class_uid = ds.SOPClassUID
-            if class_uid == CT_class_uid:
+            if (class_uid == CT_class_uid) or (class_uid == PET_class_uid):
                 data = (float(ds.RescaleSlope) * data) + float(ds.RescaleIntercept)
             elif class_uid == MRI_class_uid:
-                print('MRI image: no rescaling (temporarely !!!!!!!!!!!!')
+                pass
+                #print('MRI image: no rescaling (temporarely !!!!!!!!!!!!')
             else:
-                raise ValueError('no CT image: currently not able to read yet')
+                raise ValueError('image format currently not able to read yet')
             img[:, :, idx] = data
         return img
+
+    def get_manufacturer(self):
+        '''returns the manufacturer of slice 0 (no check for other slices)'''
+        ds = pydcm.read_file(self.slice_paths[0])
+        try:
+            manu = ds.Manufacturer 
+        except:
+            manu = 'None'
+        return manu
+
+    def get_model(self):
+        ''' returns the manufacturer model name of slice 0
+            (no check for other slices)
+        '''
+        ds = pydcm.read_file(self.slice_paths[0])
+        try:
+            model = ds.ManufacturerModelName 
+        except:
+            model = 'None'
+        return model 
 
 class DICOMContour():
     ''' abstract dicom contour class, parent to DICOMStruct and DICOMSeg
