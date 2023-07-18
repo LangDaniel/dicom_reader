@@ -149,6 +149,23 @@ class DICOMImage():
             model = 'None'
         return model 
 
+    def get_tag(self, tag):
+        ''' returns a specific tag for slice 0
+            (no check for other slices)
+        '''
+        ds = pydcm.read_file(self.slice_paths[0])
+        try:
+            value = getattr(ds, tag) 
+        except:
+            value = 'None'
+        return value 
+
+    def list_tags(self):
+        ''' returns all tags of slice 0
+        '''
+        ds = pydcm.read_file(self.slice_paths[0])
+        return dir(ds)
+
 class DICOMContour():
     ''' abstract dicom contour class, parent to DICOMStruct and DICOMSeg
 
