@@ -16,6 +16,9 @@ class DICOMImage():
         self.instance_uids, sorted_idx = self.sort_instance_uids(slice_paths)
         self.slice_paths = np.array(slice_paths)[sorted_idx]
 
+    def __len__(self):
+        return len(self.slice_paths)
+
     def sort_instance_uids(self, slice_paths):
         '''returns the slice instance uids sorted by height'''
 
@@ -50,7 +53,7 @@ class DICOMImage():
         orient = np.array(orient)
         orient = np.array([*orient[abs(orient) > precision], 1])
 
-        return orient 
+        return orient
 
     def get_origin(self):
         '''get patient position of first (lowest) slice'''
@@ -133,7 +136,7 @@ class DICOMImage():
         '''returns the manufacturer of slice 0 (no check for other slices)'''
         ds = pydcm.read_file(self.slice_paths[0])
         try:
-            manu = ds.Manufacturer 
+            manu = ds.Manufacturer
         except:
             manu = 'None'
         return manu
@@ -144,26 +147,30 @@ class DICOMImage():
         '''
         ds = pydcm.read_file(self.slice_paths[0])
         try:
-            model = ds.ManufacturerModelName 
+            model = ds.ManufacturerModelName
         except:
             model = 'None'
-        return model 
+        return model
 
-    def get_tag(self, tag):
-        ''' returns a specific tag for slice 0
+    def get_tag(self, tag, slz=None):
+        ''' returns a specific tag for slice "slz"
             (no check for other slices)
         '''
-        ds = pydcm.read_file(self.slice_paths[0])
+        if slz == None:
+            slz = self.__len__()//2
+        ds = pydcm.read_file(self.slice_paths[slz])
         try:
-            value = getattr(ds, tag) 
+            value = getattr(ds, tag)
         except:
             value = 'None'
-        return value 
+        return value
 
-    def list_tags(self):
-        ''' returns all tags of slice 0
+    def list_tags(self, slz=None):
+        ''' returns all tags of slice "slz"
         '''
-        ds = pydcm.read_file(self.slice_paths[0])
+        if slz == None:
+            slz = self.__len__()//2
+        ds = pydcm.read_file(self.slice_paths[slz])
         return dir(ds)
 
 class DICOMContour():
@@ -201,40 +208,40 @@ class DICOMContour():
     def get_bbox(self, order='numpy'):
         '''returns a global bounding box for the contour
 
-        Args:    
+        Args:
             order: one of "numpy", "cv2", "row_first" or "col_first" specifies
-                the order of the axis. (numpy == row_first, cv2 == col_first)        
+                the order of the axis. (numpy == row_first, cv2 == col_first)
         '''
         #if isinstance(self.ROI_idx, bool):
         #    raise ValueError('not ROI is set: use set_ROI_idx to do so')
 
         order = order.lower()
         assert order in ['numpy', 'cv2', 'row_first', 'col_first'], 'order not found'
-            
+
         contour = self.get_contour()
         bbox = np.zeros(6)
         bbox[::2] = np.min(contour, axis=0)
         bbox[1::2] = np.max(contour, axis=0)
 
         bbox = bbox.astype(int)
-        
+
         if (order == 'cv2') or (order == 'col_first'):
-            return bbox 
-        
+            return bbox
+
         bbox[:4] = bbox[2], bbox[3], bbox[0], bbox[1]
         return bbox
 
     def get_center(self, order='numpy'):
         ''' returns the center of the region of interesst
 
-        Args:    
+        Args:
             order: one of "numpy", "cv2", "row_first" or "col_first" specifies
-                the order of the axis. (numpy == row_first, cv2 == col_first)        
+                the order of the axis. (numpy == row_first, cv2 == col_first)
         '''
 
         order = order.lower()
         assert order in ['numpy', 'cv2', 'row_first', 'col_first'], 'order not found'
-        
+
         contour = self.get_contour()
         center = np.mean(contour, axis=0).astype(int)
 
@@ -243,7 +250,7 @@ class DICOMContour():
 
         center[0], center[1] = center[1], center[0]
         return center
-        
+
 
 class DICOMSeg(DICOMContour):
     ''' dicom seg class, lets you read SEG files
@@ -370,7 +377,7 @@ class DICOMStruct(DICOMContour):
 
     def coordinates_to_pixel(self, coordiantes):
         ''' takes a scanner coordiante (x, y, z) and returns
-            the ijk pixel data coordiate 
+            the ijk pixel data coordiate
         '''
 
         x_idx = abs(self.origin[0] - coordiantes[0]) / self.spacing[0]
@@ -383,7 +390,7 @@ class DICOMStruct(DICOMContour):
         ''' get the complete contour data for a given region of interesst
             specified by self.ROI
 
-        Args:    
+        Args:
             mode: "pixel" or "coordinates",
                 for pixel indices are returned
                 for coordiante distances in mm are returned
@@ -410,7 +417,7 @@ class DICOMStruct(DICOMContour):
     def get_pixel_array(self):
         '''returns the contour as numpy array
 
-        Args:    
+        Args:
             None
         '''
         if isinstance(self.ROI_idx, bool):
