@@ -17,7 +17,10 @@
 dicom_reader/
 ├── dicom_reader.py      # Main DICOM processing module
 ├── example.py           # Runnable example script for loading ROI masks
+├── tests/               # Pytest-based test suite
+├── .github/workflows/   # GitHub Actions CI configuration
 ├── README.md            # Project documentation
+├── docs/                # Additional API reference docs
 ├── requirements.txt     # Python dependencies
 ├── LICENSE              # Project license
 └── .gitignore           # Repository ignores (if present)
