@@ -42,8 +42,8 @@ def test_dicom_image_smoke(tmp_path):
 
     first_path = slice_dir / 'slice_1.dcm'
     second_path = slice_dir / 'slice_2.dcm'
-    _write_dicom_slice(first_path, z=0.0, uid='uid-1')
-    _write_dicom_slice(second_path, z=10.0, uid='uid-2')
+    _write_dicom_slice(first_path, z=0.0, uid='1.2.826.0.1.3680043.8.498.1320000000000000000000001')
+    _write_dicom_slice(second_path, z=10.0, uid='1.2.826.0.1.3680043.8.498.1320000000000000000000002')
 
     img = dicom_reader.DICOMImage(str(slice_dir))
 
@@ -61,8 +61,8 @@ def test_dicom_image_pixel_array(tmp_path):
     second_path = slice_dir / 'slice_2.dcm'
     first_values = np.ones((4, 4), dtype=np.uint16) * 10
     second_values = np.ones((4, 4), dtype=np.uint16) * 20
-    _write_dicom_slice(first_path, z=0.0, uid='uid-1', values=first_values)
-    _write_dicom_slice(second_path, z=10.0, uid='uid-2', values=second_values)
+    _write_dicom_slice(first_path, z=0.0, uid='1.2.826.0.1.3680043.8.498.1320000000000000000000003', values=first_values)
+    _write_dicom_slice(second_path, z=10.0, uid='1.2.826.0.1.3680043.8.498.1320000000000000000000004', values=second_values)
 
     img = dicom_reader.DICOMImage(str(slice_dir))
     data = img.get_pixel_array()
