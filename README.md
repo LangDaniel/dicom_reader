@@ -1,5 +1,8 @@
 # DICOM reader
 
+[![Python tests](https://github.com/LangDaniel/dicom_reader/actions/workflows/python-tests.yml/badge.svg)](https://github.com/LangDaniel/dicom_reader/actions/workflows/python-tests.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 `dicom_reader` is a small Python utility for reading 3D DICOM image stacks and converting RTSTRUCT contours into voxel masks. It is designed for working with CT/PET/MRI volumes and ROI data exported from DICOM. If your dataset does not include RTSTRUCT information, consider using [SimpleITK](https://simpleitk.org/) instead.
 
 ## Features
