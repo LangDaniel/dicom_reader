@@ -31,8 +31,8 @@ class DICOMImage():
             ds = pydcm.read_file(slz)
             heights[idx] = ds.ImagePositionPatient[-1]
             uids[idx] = ds.SOPInstanceUID
-        sorted_idx = heights.argsort()
-        return uids[sorted_idx[::-1]], sorted_idx
+        sorted_idx = heights.argsort()[::-1]]
+        return uids[sorted_idx], sorted_idx
 
     def get_shape(self):
         '''get the size of the image'''

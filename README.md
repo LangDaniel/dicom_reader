@@ -35,13 +35,11 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
+## API reference
+
+See the [docs/README.md](docs/README.md) file for a summary of the main classes and methods.
+
 ## Usage
-
-The example script is meant to be edited directly with your local DICOM paths and then run as a simple Python script:
-
-```bash
-python3 example.py
-```
 
 The following example loads a CT stack and converts one ROI from an RTSTRUCT file into a 3D mask.
 
@@ -64,8 +62,10 @@ struct_ds = dicom_reader.DICOMStruct(
     shape=img_ds.get_shape(),
 )
 
+struct_ds.get_ROI_names() # prints the available ROI names
+
 # select the ROI
-struct_ds.set_ROI_idx("GTV-1") 
+struct_ds.set_ROI_idx('ROINAME') 
 roi_mask = struct_ds.get_pixel_array() # numpy ROI voxel data
 ```
 
