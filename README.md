@@ -3,7 +3,7 @@
 [![Tests](https://github.com/LangDaniel/dicom_reader/actions/workflows/python-tests.yml/badge.svg)](https://github.com/LangDaniel/dicom_reader/actions/workflows/python-tests.yml)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://www.apache.org/licenses/LICENSE-2.0)
 
-`dicom_reader` is a small Python utility for reading 3D DICOM image stacks and their corresponding RTSTRUCT or SEG files and convert them into voxel arrays.
+`dicom_reader` is a small Python utility for reading 3D DICOM image stacks and their corresponding RTSTRUCT or SEG files and converting them into voxel arrays.
 It is designed for working with CT/PET/MRI volumes and ROI data exported from DICOM.
 If your dataset does not include RTSTRUCT/SEG information, consider using [SimpleITK](https://simpleitk.org/) instead.
 
