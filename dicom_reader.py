@@ -26,7 +26,7 @@ class DICOMImage:
         uids = np.empty(len(slice_paths), dtype='U100')
 
         for idx, slz in enumerate(slice_paths):
-            ds = pydcm.read_file(slz)
+            ds = pydcm.dcmread(slz)
             heights[idx] = ds.ImagePositionPatient[-1]
             uids[idx] = ds.SOPInstanceUID
 
@@ -35,15 +35,15 @@ class DICOMImage:
 
     def get_shape(self):
         """Return the image size as (rows, columns, num_slices)."""
-        ds = pydcm.read_file(self.slice_paths[0])
+        ds = pydcm.dcmread(self.slice_paths[0])
         return (ds.Rows, ds.Columns, len(self.slice_paths))
 
     def get_orientation(self, precision=0.005):
         """Return the image orientation and validate it across slices."""
-        orient = pydcm.read_file(self.slice_paths[0]).ImageOrientationPatient
+        orient = pydcm.dcmread(self.slice_paths[0]).ImageOrientationPatient
 
         for idx in range(1, len(self.slice_paths)):
-            ds = pydcm.read_file(self.slice_paths[idx])
+            ds = pydcm.dcmread(self.slice_paths[idx])
             if ds.ImageOrientationPatient != orient:
                 raise ValueError('orientation changed')
 
@@ -53,21 +53,21 @@ class DICOMImage:
 
     def get_origin(self):
         """Return the patient position of the first slice."""
-        ds = pydcm.read_file(self.slice_paths[0])
+        ds = pydcm.dcmread(self.slice_paths[0])
         return ds.ImagePositionPatient
 
     def get_slice_positions(self):
         """Return the patient position for every slice."""
         positions = np.empty((3, len(self.slice_paths)))
         for idx, slize in enumerate(self.slice_paths):
-            ds = pydcm.read_file(slize)
+            ds = pydcm.dcmread(slize)
             positions[:, idx] = ds.ImagePositionPatient
         return positions
 
     def get_pos_from_uid(self, uid):
         """Return the patient position for a given SOP Instance UID."""
         for slize in self.slice_paths:
-            ds = pydcm.read_file(slize)
+            ds = pydcm.dcmread(slize)
             if ds.SOPInstanceUID == uid:
                 return ds.ImagePositionPatient
         return False
@@ -80,7 +80,7 @@ class DICOMImage:
         pix_spacing = np.empty((2, len(self.slice_paths)))
         heights = np.empty(len(self.slice_paths))
         for idx, slize in enumerate(self.slice_paths):
-            ds = pydcm.read_file(slize)
+            ds = pydcm.dcmread(slize)
             pix_spacing[:, idx] = ds.PixelSpacing
             heights[idx] = float(ds.ImagePositionPatient[-1])
 
@@ -131,7 +131,7 @@ class DICOMImage:
 
     def get_manufacturer(self):
         """Return the manufacturer name of slice 0."""
-        ds = pydcm.read_file(self.slice_paths[0])
+        ds = pydcm.dcmread(self.slice_paths[0])
         try:
             manu = ds.Manufacturer
         except Exception:
@@ -140,7 +140,7 @@ class DICOMImage:
 
     def get_model(self):
         """Return the manufacturer model of slice 0."""
-        ds = pydcm.read_file(self.slice_paths[0])
+        ds = pydcm.dcmread(self.slice_paths[0])
         try:
             model = ds.ManufacturerModelName
         except Exception:
@@ -151,7 +151,7 @@ class DICOMImage:
         """Return a specific DICOM tag for a given slice."""
         if slz is None:
             slz = self.__len__() // 2
-        ds = pydcm.read_file(self.slice_paths[slz])
+        ds = pydcm.dcmread(self.slice_paths[slz])
         try:
             value = getattr(ds, tag)
         except Exception:
@@ -162,7 +162,7 @@ class DICOMImage:
         """Return all tags for a given slice."""
         if slz is None:
             slz = self.__len__() // 2
-        ds = pydcm.read_file(self.slice_paths[slz])
+        ds = pydcm.dcmread(self.slice_paths[slz])
         return dir(ds)
 
 
