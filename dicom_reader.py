@@ -114,7 +114,7 @@ class DICOMImage:
         img = np.empty(self.get_shape())
 
         for idx, slz in enumerate(self.slice_paths):
-            ds = pydcm.read_file(slz)
+            ds = pydcm.dcmread(slz)
             data = ds.pixel_array
             class_uid = ds.SOPClassUID
             if (class_uid == ct_class_uid) or (class_uid == pet_class_uid):
@@ -170,7 +170,7 @@ class DICOMContour:
     """Abstract base class for DICOM contour-like objects."""
 
     def __init__(self, file_path, origin, spacing, shape):
-        self.ds = pydcm.read_file(str(file_path))
+        self.ds = pydcm.dcmread(str(file_path))
         self.origin = origin
         self.spacing = spacing
         self.shape = shape
