@@ -31,33 +31,17 @@ dicom_reader/
 
 ## Installation
 
-Clone the repository and install the project dependencies from the included requirements file:
+With [uv](https://docs.astral.sh/uv/):
 
 ```bash
-git clone https://github.com/LangDaniel/dicom_reader
-cd dicom_reader
-python -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
+uv sync
 ```
 
-## Development (using uv)
-
-This project uses a `uv`-based development environment. To run tests and commands inside the project's `uv` environment install `uv` and use `uv run` so the CI and local runs behave the same:
+Or with pip:
 
 ```bash
-# install uv (one-time)
-pip install uv
-
-# install runtime deps (one-time)
-pip install -r requirements.txt
-
-# run tests inside the uv environment
-uv run -- python -m pytest -q
+pip install .
 ```
-
-If you prefer not to use `uv`, the tests can still be executed directly with `python3 -m pytest -q`.
-
 
 ## API reference
 
