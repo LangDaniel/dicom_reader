@@ -41,6 +41,24 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
+## Development (using uv)
+
+This project uses a `uv`-based development environment. To run tests and commands inside the project's `uv` environment install `uv` and use `uv run` so the CI and local runs behave the same:
+
+```bash
+# install uv (one-time)
+pip install uv
+
+# install runtime deps (one-time)
+pip install -r requirements.txt
+
+# run tests inside the uv environment
+uv run -- python -m pytest -q
+```
+
+If you prefer not to use `uv`, the tests can still be executed directly with `python3 -m pytest -q`.
+
+
 ## API reference
 
 See the [docs/README.md](docs/README.md) file for a summary of the main classes and methods.
