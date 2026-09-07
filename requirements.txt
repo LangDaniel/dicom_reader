@@ -2,3 +2,4 @@ numpy
 pydicom
 opencv-python
 matplotlib
+pytest>=7.0
