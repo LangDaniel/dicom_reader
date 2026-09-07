@@ -3,28 +3,31 @@
 [![Tests](https://github.com/LangDaniel/dicom_reader/actions/workflows/python-tests.yml/badge.svg)](https://github.com/LangDaniel/dicom_reader/actions/workflows/python-tests.yml)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://www.apache.org/licenses/LICENSE-2.0)
 
-`dicom_reader` is a small Python utility for reading 3D DICOM image stacks and converting RTSTRUCT contours into voxel masks. It is designed for working with CT/PET/MRI volumes and ROI data exported from DICOM. If your dataset does not include RTSTRUCT information, consider using [SimpleITK](https://simpleitk.org/) instead.
+`dicom_reader` is a small Python utility for reading 3D DICOM image stacks and their corresponding RTSTRUCT or SEG files and convert them into voxel arrays.
+It is designed for working with CT/PET/MRI volumes and ROI data exported from DICOM.
+If your dataset does not include RTSTRUCT/SEG information, consider using [SimpleITK](https://simpleitk.org/) instead.
 
 ## Features
 
 - Read a DICOM slice directory into a structured `DICOMImage` object
 - Sort slices by patient position and geometry
 - Access metadata such as spacing, origin, orientation, and manufacturer details
-- Convert RTSTRUCT ROI contours into 3D binary masks via `DICOMStruct`
-- Read SEG files through `DICOMSeg`
-- Extract pixel arrays for downstream processing or visualization
+- Convert RTSTRUCT/SEG contours into 3D binary masks via `DICOMStruct/DICOMSeg`
+- Extract voxel arrays for downstream processing or visualization
 
 ## Project structure
 
 ```text
 dicom_reader/
-├── dicom_reader.py      # Main DICOM processing module
+├── src/
+│   └── dicom_reader/    # Package source (main implementation in __init__.py)
 ├── example.py           # Runnable example script for loading ROI masks
 ├── tests/               # Pytest-based test suite
 ├── .github/workflows/   # GitHub Actions CI configuration
 ├── README.md            # Project documentation
 ├── docs/                # Additional API reference docs
 ├── requirements.txt     # Python dependencies
+├── pyproject.toml       # Build configuration (uv_build)
 ├── LICENSE              # Project license
 └── .gitignore           # Repository ignores (if present)
 ```
