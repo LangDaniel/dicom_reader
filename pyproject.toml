@@ -1,0 +1,22 @@
+[project]
+name = "dicom-reader"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "Daniel Lang", email = "lang.daniel@posteo.de" }
+]
+requires-python = ">=3.9"
+dependencies = [
+    "matplotlib>=3.9.4",
+    "numpy>=2.0.2",
+    "opencv-python>=5.0.0.93",
+    "pydicom>=2.4.4",
+]
+
+[project.scripts]
+dicom-reader = "dicom_reader:main"
+
+[build-system]
+requires = ["uv_build>=0.12.10,<0.13.0"]
+build-backend = "uv_build"
