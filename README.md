@@ -8,7 +8,7 @@ It is designed for working with CT/PET/MRI volumes and ROI data exported from DI
 If your dataset does not include RTSTRUCT/SEG information, consider using [SimpleITK](https://simpleitk.org/) instead.
 
 ## Features
-
+<!-- feature descriptions-->
 - Read a DICOM slice directory into a structured `DICOMImage` object
 - Sort slices by patient position and geometry
 - Access metadata such as spacing, origin, orientation, and manufacturer details
